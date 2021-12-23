@@ -1,0 +1,406 @@
+---
+title: "Gitcoin Grants Analysis"
+author: "Omni Analytics Group"
+date: "12/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, fig.width=12, fig.height=8)
+```
+
+```{r}
+library(tidyverse)
+library(ggthemes)
+library(knitr)
+library(lubridate)
+library(tidytext)
+library(topicmodels)
+library(omnitheme)
+
+gitcoin_grants <- read_csv("Grants Results History Round over Round + Grant over Grant - GR1-GR12.csv")
+
+time_periods <- gitcoin_grants %>%
+    distinct(round_start_date, round_end_date, .keep_all = TRUE) %>%
+    arrange(round_start_date) %>%
+    mutate(year = year(round_start_date),
+           fake = ymd(paste("2022", month(round_start_date), day(round_start_date), sep = "-")),
+           fake_end = ymd(paste("2022", month(round_end_date), day(round_end_date), sep = "-")))
+
+ggplot(data = time_periods, aes(xmin = round_start_date, xmax = round_end_date, fill = factor(round_number))) +
+    geom_rect(ymin = 0, ymax = 1, colour = "grey60") +
+    geom_label(aes(label = paste0("#", round_number), x = round_start_date, y = .5)) +
+    scale_fill_brewer(palette = "Set3") +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %Y") +
+    labs(
+        title = "Active Periods for each Gitcoin Grants Round",
+        subtitle = "Periods colored by round number"
+    ) +
+    theme_fivethirtyeight() +
+    theme(legend.position = "off", axis.text.y = element_blank()) +
+    watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
+
+```
+
+```{r, fig.width=14}
+ggplot(data = time_periods, aes(xmin = fake, xmax = fake_end, fill = factor(round_number))) +
+    geom_rect(ymin = 0, ymax = 1, colour = "grey60") +
+    geom_label(aes(label = paste0("#", round_number), x = fake, y = .5)) +
+    scale_fill_brewer(palette = "Set3") +
+    scale_x_date(date_breaks = "2 weeks", date_labels = "%b %d") +
+    facet_wrap(~year, nrow = 4) +
+    labs(
+        title = "Active Periods for each Gitcoin Grants Round",
+        subtitle = "Periods colored by round number"
+    ) +
+    theme_fivethirtyeight() +
+    theme(legend.position = "off", axis.text.y = element_blank())
+```
+
+```{r}
+# Number of grants per region total and over time
+gitcoin_grants %>%
+    mutate(region = ifelse(region %in% c("none", "undefined", "null"), "none", region)) %>%
+    group_by(region) %>%
+    summarise(grants = n()) %>%
+    arrange(desc(grants)) %>%
+    kable()
+```
+
+```{r}
+gitcoin_grants %>%
+    mutate(region = ifelse(region %in% c("none", "undefined", "null"), "none", region)) %>%
+    group_by(month = month(round_start_date), year = year(round_start_date), region) %>%
+    summarise(grants = n()) %>%
+    mutate(Date = ymd(paste(year, month, "01", sep = "-"))) %>%
+    ggplot(aes(x = Date, y = grants, colour = region)) +
+    geom_line(size = 1.5) +
+    scale_color_brewer(palette = "Set3") +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %y") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    labs(
+        title = "Number of Grants over Time by Region",
+        subtitle = "Through Gitcoin Grants Round 12"
+    ) +
+    theme_fivethirtyeight() +
+    watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
+```
+
+```{r, fig.height=14}
+# Number of grants per region per category in total and overtime
+gitcoin_grants %>%
+    mutate(region = ifelse(region %in% c("none", "undefined", "null"), "none", region)) %>%
+    group_by(month = month(round_start_date), year = year(round_start_date), region, category) %>%
+    summarise(grants = n()) %>%
+    mutate(Date = ymd(paste(year, month, "01", sep = "-"))) %>%
+    ggplot(aes(x = Date, y = grants, colour = region)) +
+    geom_line(size = 1.5) +
+    scale_color_brewer(palette = "Set3") +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %y") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    facet_wrap(~category, ncol = 1) +
+    labs(
+        title = "Number of Grants over Time by Region and Category",
+        subtitle = "Through Gitcoin Grants Round 12"
+    ) +
+    theme_fivethirtyeight()
+```
+
+```{r}
+# Number of contributors per region in total and over time
+gitcoin_grants %>%
+    mutate(region = ifelse(region %in% c("none", "undefined", "null"), "none", region)) %>%
+    group_by(region) %>%
+    summarise(contributors = sum(num_unique_contributors)) %>%
+    arrange(desc(contributors)) %>%
+    kable()
+```
+
+```{r}
+gitcoin_grants %>%
+    mutate(region = ifelse(region %in% c("none", "undefined", "null"), "none", region)) %>%
+    group_by(month = month(round_start_date), year = year(round_start_date), region) %>%
+    summarise(contributors = sum(num_unique_contributors)) %>%
+    mutate(Date = ymd(paste(year, month, "01", sep = "-"))) %>%
+    ggplot(aes(x = Date, y = contributors, colour = region)) +
+    geom_line(size = 1.5) +
+    scale_color_brewer(palette = "Set3") +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %y") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    labs(
+        title = "Number of Unique Contributors over Time by Region",
+        subtitle = "Through Gitcoin Grants Round 12"
+    ) +
+    theme_fivethirtyeight() +
+    watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
+```
+
+```{r}
+# Total crowdfunded contributions per region
+gitcoin_grants %>%
+    mutate(region = ifelse(region %in% c("none", "undefined", "null"), "none", region),
+           crowdfund_amount_contributions_usd = readr::parse_number(crowdfund_amount_contributions_usd)) %>%
+    group_by(region) %>%
+    summarise(contributions = sum(crowdfund_amount_contributions_usd, na.rm = TRUE)) %>%
+    arrange(desc(contributions)) %>%
+    mutate(contributions = scales::dollar(contributions)) %>%
+    kable()
+```
+
+```{r}
+# Top 10 grants per region
+gitcoin_grants %>%
+    mutate(region = ifelse(region %in% c("none", "undefined", "null"), "none", region),
+           crowdfund_amount_contributions_usd = readr::parse_number(crowdfund_amount_contributions_usd)) %>%
+    group_by(region) %>%
+    arrange(desc(crowdfund_amount_contributions_usd)) %>%
+    slice(1:10) %>%
+    mutate(contributions = scales::dollar(crowdfund_amount_contributions_usd)) %>%
+    select(Region = region, Round = round_number, Grant = grant_title, Amount = contributions) %>%
+    kable()
+```
+
+```{r}
+# Number of grants per category total and over time
+gitcoin_grants %>%
+    group_by(category) %>%
+    summarise(grants = n()) %>%
+    arrange(desc(grants)) %>%
+    kable()
+```
+
+```{r}
+gitcoin_grants %>%
+    group_by(month = month(round_start_date), year = year(round_start_date), category) %>%
+    summarise(grants = n()) %>%
+    mutate(Date = ymd(paste(year, month, "01", sep = "-"))) %>%
+    ggplot(aes(x = Date, y = grants, colour = category)) +
+    geom_line(size = 1.5) +
+    scale_color_brewer(palette = "Set3") +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %y") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    labs(
+        title = "Number of Grants over Time by Category",
+        subtitle = "Through Gitcoin Grants Round 12"
+    ) +
+    theme_fivethirtyeight() +
+    watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
+```
+
+```{r}
+# Number of contributors per category in total and over time
+gitcoin_grants %>%
+    group_by(category) %>%
+    summarise(contributors = sum(num_unique_contributors)) %>%
+    arrange(desc(contributors)) %>%
+    kable()
+```
+
+```{r}
+gitcoin_grants %>%
+    group_by(month = month(round_start_date), year = year(round_start_date), category) %>%
+    summarise(contributors = sum(num_unique_contributors)) %>%
+    mutate(Date = ymd(paste(year, month, "01", sep = "-"))) %>%
+    ggplot(aes(x = Date, y = contributors, colour = category)) +
+    geom_line(size = 1.5) +
+    scale_color_brewer(palette = "Set3") +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %y") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    labs(
+        title = "Number of Unique Contributors over Time by Category",
+        subtitle = "Through Gitcoin Grants Round 12"
+    ) +
+    theme_fivethirtyeight() +
+    watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
+```
+
+```{r}
+# Total crowdfunded contributions per category
+gitcoin_grants %>%
+    mutate(crowdfund_amount_contributions_usd = readr::parse_number(crowdfund_amount_contributions_usd)) %>%
+    group_by(category) %>%
+    summarise(contributions = sum(crowdfund_amount_contributions_usd, na.rm = TRUE)) %>%
+    arrange(desc(contributions)) %>%
+    mutate(contributions = scales::dollar(contributions)) %>%
+    kable()
+```
+
+```{r}
+# Top 10 grants per category
+gitcoin_grants %>%
+    mutate(crowdfund_amount_contributions_usd = readr::parse_number(crowdfund_amount_contributions_usd)) %>%
+    group_by(category) %>%
+    arrange(desc(crowdfund_amount_contributions_usd)) %>%
+    slice(1:10) %>%
+    mutate(contributions = scales::dollar(crowdfund_amount_contributions_usd)) %>%
+    select(Category = category, Round = round_number, Grant = grant_title, Amount = contributions) %>%
+    kable()
+```
+
+```{r}
+title_tdm1 <- gitcoin_grants %>%
+    select(grant_id, grant_title) %>%
+    unnest_tokens("word", grant_title) %>%
+    anti_join(get_stopwords()) %>%
+    group_by(grant_id, word) %>%
+    add_tally() 
+title_tdm <- title_tdm1 %>%
+    cast_tdm(grant_id, word, n)
+
+my_lda <- LDA(title_tdm, k = 6, control = list(seed = 1234))
+tidy_lda <- tidy(my_lda, matrix = "beta")
+
+tidy_lda %>%
+    group_by(topic) %>%
+    slice_max(beta, n = 10) %>% 
+    ungroup() %>%
+    arrange(topic, -beta) %>%
+    mutate(term = reorder_within(term, beta, topic)) %>%
+    ggplot(aes(beta, term, fill = factor(topic))) +
+    geom_col(show.legend = FALSE) +
+    facet_wrap(~ topic, scales = "free") +
+    scale_fill_brewer(palette = "Dark2") +
+    scale_y_reordered() +
+    labs(
+        title = "Gitcoin Grant Themes in Grant Titles",
+        subtitle = "Through Gitcoin Grants Round 12"
+    )
+```
+
+```{r}
+ggplot(data = gitcoin_grants %>% mutate(match_amount = readr::parse_number(match_amount)), aes(x = match_amount)) +
+    geom_histogram() +
+    scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    labs(
+        title = "Distribution of Match Amount (Log Scale - $)",
+        subtitle = "Through Gitcoin Grants Round 12",
+    ) +
+    theme_fivethirtyeight()
+```
+
+```{r, fig.width=22}
+ggplot(data = gitcoin_grants %>% mutate(match_amount = readr::parse_number(match_amount)), aes(x = match_amount)) +
+    geom_histogram() +
+    scale_x_log10(labels = function(.) paste0("$", scales::comma(., accuracy = 1)), breaks = 10^(-2:10)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    facet_wrap(~round_number) +
+    labs(
+        title = "Distribution of Match Amount by Round (Log Scale - $)",
+        subtitle = "Through Gitcoin Grants Round 12",
+    ) +
+    theme_fivethirtyeight()
+```
+
+
+```{r}
+ggplot(data = gitcoin_grants, aes(x = num_contributions)) +
+    geom_histogram() +
+    scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    labs(
+        title = "Distribution of Contributions (Log Scale - $)",
+        subtitle = "Through Gitcoin Grants Round 12",
+    ) +
+    theme_fivethirtyeight() +
+    watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
+```
+
+```{r}
+ggplot(data = gitcoin_grants, aes(x = num_contributions)) +
+    geom_histogram() +
+    scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    facet_wrap(~round_number) +
+    labs(
+        title = "Distribution of Contributions by Round (Log Scale - $)",
+        subtitle = "Through Gitcoin Grants Round 12",
+    ) +
+    theme_fivethirtyeight()
+```
+
+```{r}
+ggplot(data = gitcoin_grants, aes(x = num_unique_contributors)) +
+    geom_histogram() +
+    scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    labs(
+        title = "Distribution of Unique Contributors (Log Scale - $)",
+        subtitle = "Through Gitcoin Grants Round 12",
+    ) +
+    theme_fivethirtyeight()
+```
+
+```{r}
+ggplot(data = gitcoin_grants, aes(x = num_unique_contributors)) +
+    geom_histogram() +
+    scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    facet_wrap(~round_number) +
+    labs(
+        title = "Distribution of Unique Contributors by Round (Log Scale - $)",
+        subtitle = "Through Gitcoin Grants Round 12",
+    ) +
+    theme_fivethirtyeight()
+```
+
+```{r}
+ggplot(data = gitcoin_grants %>% mutate(crowdfund_amount_contributions_usd = readr::parse_number(crowdfund_amount_contributions_usd)), aes(x = num_unique_contributors)) +
+    geom_histogram() +
+    scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    labs(
+        title = "Distribution of Crowdfund Contributions (Log Scale - $)",
+        subtitle = "Through Gitcoin Grants Round 12",
+    ) +
+    theme_fivethirtyeight() +
+    watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
+```
+
+```{r, fig.width=22}
+ggplot(data = gitcoin_grants %>% mutate(crowdfund_amount_contributions_usd = readr::parse_number(crowdfund_amount_contributions_usd)), aes(x = crowdfund_amount_contributions_usd)) +
+    geom_histogram() +
+    scale_x_log10(labels = function(.) paste0("$", scales::comma(., accuracy = 1)), breaks = 10^(-2:10)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                       labels = scales::comma) +
+    facet_wrap(~round_number) +
+    labs(
+        title = "Distribution of Crowdfund Contributions by Round (Log Scale - $)",
+        subtitle = "Through Gitcoin Grants Round 12",
+    ) +
+    theme_fivethirtyeight()
+```
+
+# Top 30 words by total amount raised
+
+```{r}
+title_tdm1 %>%
+    left_join(gitcoin_grants %>% select(grant_id, total)) %>%
+    mutate(total = readr::parse_number(total)) %>%
+    group_by(word) %>%
+    summarise(total = sum(total)) %>%
+    arrange(desc(total)) %>%
+    mutate(total = scales::dollar(total)) %>%
+    slice(1:30) %>%
+    kable()
+```
+
+# Top 30 grants by difference between num contribs and unique contribs
+
+```{r}
+gitcoin_grants %>%
+    mutate(Diff = num_contributions - num_unique_contributors) %>%
+    arrange(desc(Diff)) %>%
+    slice(1:30) %>%
+    kable()
+```
+
