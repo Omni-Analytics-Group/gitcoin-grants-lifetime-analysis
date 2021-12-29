@@ -9,6 +9,10 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, fig.width=12, fig.height=8)
 ```
 
+## Exploratory Analysis
+
+First, we can visualize the active grant round periods over time, where we can see that the grant rounds clearly do not take place at consistently regular intervals or for regular durations. 
+
 ```{r}
 library(tidyverse)
 library(ggthemes)
@@ -42,6 +46,8 @@ ggplot(data = time_periods, aes(xmin = round_start_date, xmax = round_end_date, 
 
 ```
 
+We can make this more clear by stacking each year vertically, which indicates that the grant rounds both occurred at different times during the year, and lasted for different amounts of time.
+
 ```{r, fig.width=14}
 ggplot(data = time_periods, aes(xmin = fake, xmax = fake_end, fill = factor(round_number))) +
     geom_rect(ymin = 0, ymax = 1, colour = "grey60") +
@@ -57,6 +63,8 @@ ggplot(data = time_periods, aes(xmin = fake, xmax = fake_end, fill = factor(roun
     theme(legend.position = "off", axis.text.y = element_blank())
 ```
 
+Next, we take a look at the number of grants by region. Grants that are not associated with a particular region are the plurality, followed by North America and Europe. The least commonly associated regions for grants were the Middle East and Oceania.
+
 ```{r}
 # Number of grants per region total and over time
 gitcoin_grants %>%
@@ -66,6 +74,8 @@ gitcoin_grants %>%
     arrange(desc(grants)) %>%
     kable()
 ```
+
+With that said, the aggregate view doesn't demonstrate how these values have changed over time. When we break that down, we see a noticeable recent growth across all regions, with a particularly sharp recent increase for East Asia and Southeast Asia. 
 
 ```{r}
 gitcoin_grants %>%
@@ -86,7 +96,9 @@ gitcoin_grants %>%
     watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
 ```
 
-```{r, fig.height=14}
+We can further break this down by faceting by grant category. We quickly see that the growth across regions is not uniform by category. For example, Community grants appear to be growing faster for Southeast Asia than are other grant categories.
+
+```{r, fig.height=20}
 # Number of grants per region per category in total and overtime
 gitcoin_grants %>%
     mutate(region = ifelse(region %in% c("none", "undefined", "null"), "none", region)) %>%
@@ -106,6 +118,8 @@ gitcoin_grants %>%
     theme_fivethirtyeight()
 ```
 
+Next, let's look at contributors by region. Once again, no region, North America, and Europe dominate the list. However, there are some differences towards the bottom. For example, despite Oceania having the fewest number of total grants, it only has the third fewest contributors, suggesting that their grants have attracted a high level of interest in that region.
+
 ```{r}
 # Number of contributors per region in total and over time
 gitcoin_grants %>%
@@ -115,6 +129,8 @@ gitcoin_grants %>%
     arrange(desc(contributors)) %>%
     kable()
 ```
+
+Once again, we can visualize this as a function of time. We see a drastic increase in the number of contributors associated with grants for Europe and East Asia, with a relative decline for grants that aren't associated with a region.
 
 ```{r}
 gitcoin_grants %>%
@@ -136,6 +152,8 @@ gitcoin_grants %>%
     watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
 ```
 
+Next, we can look at the total crowd-funded contributions by region, which largely tells the same story. Interestingly, once again Oceania has a relatively higher amount of contributions when compared to the number of grants for that region.
+
 ```{r}
 # Total crowdfunded contributions per region
 gitcoin_grants %>%
@@ -147,6 +165,8 @@ gitcoin_grants %>%
     mutate(contributions = scales::dollar(contributions)) %>%
     kable()
 ```
+
+We can also visualize the top 10 grants per region, and the round associated, based on the total crowd-funded amount. Plenty to see in this table, but one previous finding is given some support - it appears the Lighthouse Ethereum 2.0 Client is a reason for the Oceania values being higher in terms of amount of contributors while lesser in terms of the total number.
 
 ```{r}
 # Top 10 grants per region
@@ -161,6 +181,8 @@ gitcoin_grants %>%
     kable()
 ```
 
+Next we turn to an aggregate view of grants by category, which indicates the most popular grant categories are Community and dApp Tech. 
+
 ```{r}
 # Number of grants per category total and over time
 gitcoin_grants %>%
@@ -169,6 +191,8 @@ gitcoin_grants %>%
     arrange(desc(grants)) %>%
     kable()
 ```
+
+As a function of time, it is clear that these two categories have long been popular, but their relative popularity has accelerated in recent months.
 
 ```{r}
 gitcoin_grants %>%
@@ -188,6 +212,8 @@ gitcoin_grants %>%
     watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
 ```
 
+Despite Community being overall the top category, contributors appear more likely to gravitate towards grants that are either dApp Tech or Infra Tech.
+
 ```{r}
 # Number of contributors per category in total and over time
 gitcoin_grants %>%
@@ -196,6 +222,8 @@ gitcoin_grants %>%
     arrange(desc(contributors)) %>%
     kable()
 ```
+
+With that said, as can be seen by the below chart, in the most recent months there has been an acceleration in the number of unique contributors to Community grants in recent months.
 
 ```{r}
 gitcoin_grants %>%
@@ -216,6 +244,8 @@ gitcoin_grants %>%
     watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
 ```
 
+Looking at the popularity of categories in terms of total crowd-funded contributions, we see a similar pattern, although Infra Tech projects have had nearly as much funded as have dApp Tech and Community projects, despite less than half the total number of grants.
+
 ```{r}
 # Total crowdfunded contributions per category
 gitcoin_grants %>%
@@ -226,6 +256,8 @@ gitcoin_grants %>%
     mutate(contributions = scales::dollar(contributions)) %>%
     kable()
 ```
+
+We can explore the top grants by category and round to see that certain projects have an outsized influence on the category in terms of the amount funded, such as the Coin Center grant under the Community category.
 
 ```{r}
 # Top 10 grants per category
@@ -238,6 +270,19 @@ gitcoin_grants %>%
     select(Category = category, Round = round_number, Grant = grant_title, Amount = contributions) %>%
     kable()
 ```
+
+## Text Analysis
+
+In an attempt to group related grants into distinct categories, we've performed a Latent Dirichlet Allocation algorithm on the grant titles, after performing some basic text cleaning operations. We selected six themes for the analysis. Roughly speaking, the categories obtained for the grants are as follows:
+
+1. DeFi - Grants associated with Decentralized Finance
+2. Blockchain/Crypto - General blockchain projects
+3. Panvala League - Grants associated with the Panvala shared endowment
+4. Community - Grants from the community category
+5. Dashboards and Protocols - Dashboards and enhancements to the protocols
+6. NFTs - Grants related to NFTs
+
+Below we can see the top terms that fell into each of the six categories.
 
 ```{r}
 title_tdm1 <- gitcoin_grants %>%
@@ -268,6 +313,8 @@ tidy_lda %>%
         subtitle = "Through Gitcoin Grants Round 12"
     )
 ```
+
+## Distributional Analysis
 
 ```{r}
 ggplot(data = gitcoin_grants %>% mutate(match_amount = readr::parse_number(match_amount)), aes(x = match_amount)) +
