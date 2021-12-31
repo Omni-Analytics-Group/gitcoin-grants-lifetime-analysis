@@ -16,7 +16,8 @@ grants_distinct <- gitcoin_grants %>%
 grant_choices <- grants_distinct$grant_id
 names(grant_choices) <- grants_distinct$grant_title
 
-ui <- fluidPage(theme = shinytheme("cerulean"),
+ui <- navbarPage(id = "top-nav", title = div(img(src = "gc.png", width = 100)), windowTitle = "Gitcoin Grants Explorer", theme = shinytheme("cerulean"),
+                 tabPanel("App", icon = icon("area-chart", "fa-2x"),
 
     titlePanel("Gitcoin Grant Growth Explorer"),
 
@@ -29,7 +30,7 @@ ui <- fluidPage(theme = shinytheme("cerulean"),
            plotOutput("growth")
         )
     )
-)
+))
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
