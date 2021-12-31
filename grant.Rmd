@@ -1,7 +1,7 @@
 ---
 title: "Gitcoin Grants Analysis"
 author: "Omni Analytics Group"
-date: "12/21/2021"
+date: "12/31/2021"
 output: html_document
 ---
 
@@ -30,6 +30,10 @@ time_periods <- gitcoin_grants %>%
     mutate(year = year(round_start_date),
            fake = ymd(paste("2022", month(round_start_date), day(round_start_date), sep = "-")),
            fake_end = ymd(paste("2022", month(round_end_date), day(round_end_date), sep = "-")))
+
+time_periods %>%
+    select(Round = round_number, `Start Date` = round_start_date, `End Date` = round_end_date) %>%
+    kable()
 
 ggplot(data = time_periods, aes(xmin = round_start_date, xmax = round_end_date, fill = factor(round_number))) +
     geom_rect(ymin = 0, ymax = 1, colour = "grey60") +
@@ -317,8 +321,11 @@ tidy_lda %>%
 ## Distributional Analysis
 
 ```{r}
-ggplot(data = gitcoin_grants %>% mutate(match_amount = readr::parse_number(match_amount)), aes(x = match_amount)) +
-    geom_histogram() +
+dat <- gitcoin_grants %>% mutate(match_amount = readr::parse_number(match_amount))
+
+ggplot(data = dat, aes(x = match_amount)) +
+    geom_histogram(colour = "grey60", fill = "darkviolet") +
+    geom_vline(xintercept = mean(dat$match_amount), colour = "goldenrod3") +
     scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
                        labels = scales::comma) +
@@ -330,8 +337,12 @@ ggplot(data = gitcoin_grants %>% mutate(match_amount = readr::parse_number(match
 ```
 
 ```{r, fig.width=22}
-ggplot(data = gitcoin_grants %>% mutate(match_amount = readr::parse_number(match_amount)), aes(x = match_amount)) +
-    geom_histogram() +
+dat <- gitcoin_grants %>% mutate(match_amount = readr::parse_number(match_amount))
+dat2 <- dat %>% group_by(round_number) %>% summarise(avg = mean(match_amount, na.rm = TRUE))
+
+ggplot(data = dat, aes(x = match_amount)) +
+    geom_histogram(colour = "grey60", fill = "darkviolet") +
+    geom_vline(data = dat2, aes(xintercept = avg), colour = "goldenrod3") +
     scale_x_log10(labels = function(.) paste0("$", scales::comma(., accuracy = 1)), breaks = 10^(-2:10)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
                        labels = scales::comma) +
@@ -346,7 +357,8 @@ ggplot(data = gitcoin_grants %>% mutate(match_amount = readr::parse_number(match
 
 ```{r}
 ggplot(data = gitcoin_grants, aes(x = num_contributions)) +
-    geom_histogram() +
+    geom_histogram(colour = "grey60", fill = "darkviolet") +
+    geom_vline(xintercept = mean(gitcoin_grants$num_contributions), colour = "chocolate1") +
     scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
                        labels = scales::comma) +
@@ -359,8 +371,11 @@ ggplot(data = gitcoin_grants, aes(x = num_contributions)) +
 ```
 
 ```{r}
+dat2 <- gitcoin_grants %>% group_by(round_number) %>% summarise(avg = mean(num_contributions, na.rm = TRUE))
+
 ggplot(data = gitcoin_grants, aes(x = num_contributions)) +
-    geom_histogram() +
+    geom_histogram(colour = "grey60", fill = "darkviolet") +
+    geom_vline(data = dat2, aes(xintercept = avg), colour = "goldenrod3") +
     scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
                        labels = scales::comma) +
@@ -374,34 +389,41 @@ ggplot(data = gitcoin_grants, aes(x = num_contributions)) +
 
 ```{r}
 ggplot(data = gitcoin_grants, aes(x = num_unique_contributors)) +
-    geom_histogram() +
-    scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
+    geom_histogram(colour = "grey60", fill = "darkviolet") +
+    geom_vline(xintercept = mean(gitcoin_grants$num_unique_contributors), colour = "goldenrod3") +
+    scale_x_log10(labels = scales::comma, breaks = 10^(-2:10)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
                        labels = scales::comma) +
     labs(
-        title = "Distribution of Unique Contributors (Log Scale - $)",
+        title = "Distribution of Unique Contributors (Log Scale)",
         subtitle = "Through Gitcoin Grants Round 12",
     ) +
     theme_fivethirtyeight()
 ```
 
 ```{r}
+dat2 <- gitcoin_grants %>% group_by(round_number) %>% summarise(avg = mean(num_unique_contributors, na.rm = TRUE))
+
 ggplot(data = gitcoin_grants, aes(x = num_unique_contributors)) +
-    geom_histogram() +
-    scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
+    geom_histogram(colour = "grey60", fill = "darkviolet") +
+    geom_vline(data = dat2, aes(xintercept = avg), colour = "goldenrod3") +    
+    scale_x_log10(labels = scales::comma, breaks = 10^(-2:10)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
                        labels = scales::comma) +
     facet_wrap(~round_number) +
     labs(
-        title = "Distribution of Unique Contributors by Round (Log Scale - $)",
+        title = "Distribution of Unique Contributors by Round (Log Scale)",
         subtitle = "Through Gitcoin Grants Round 12",
     ) +
     theme_fivethirtyeight()
 ```
 
 ```{r}
-ggplot(data = gitcoin_grants %>% mutate(crowdfund_amount_contributions_usd = readr::parse_number(crowdfund_amount_contributions_usd)), aes(x = num_unique_contributors)) +
-    geom_histogram() +
+dat <- gitcoin_grants %>% mutate(crowdfund_amount_contributions_usd = readr::parse_number(crowdfund_amount_contributions_usd))
+
+ggplot(data = dat, aes(x = num_unique_contributors)) +
+    geom_histogram(colour = "grey60", fill = "darkviolet") +
+    geom_vline(xintercept = mean(dat$crowdfund_amount_contributions_usd, na.rm = TRUE), colour = "goldenrod3") +
     scale_x_log10(labels = scales::dollar, breaks = 10^(-2:10)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
                        labels = scales::comma) +
@@ -409,13 +431,15 @@ ggplot(data = gitcoin_grants %>% mutate(crowdfund_amount_contributions_usd = rea
         title = "Distribution of Crowdfund Contributions (Log Scale - $)",
         subtitle = "Through Gitcoin Grants Round 12",
     ) +
-    theme_fivethirtyeight() +
-    watermark_img(filename = "gc.png", location = "center", width = 300, alpha = 0.2)
+    theme_fivethirtyeight()
 ```
 
 ```{r, fig.width=22}
+dat2 <- dat %>% group_by(round_number) %>% summarise(avg = mean(crowdfund_amount_contributions_usd, na.rm = TRUE))
+
 ggplot(data = gitcoin_grants %>% mutate(crowdfund_amount_contributions_usd = readr::parse_number(crowdfund_amount_contributions_usd)), aes(x = crowdfund_amount_contributions_usd)) +
-    geom_histogram() +
+    geom_histogram(colour = "grey60", fill = "darkviolet") +
+    geom_vline(data = dat2, aes(xintercept = avg), colour = "goldenrod3") +    
     scale_x_log10(labels = function(.) paste0("$", scales::comma(., accuracy = 1)), breaks = 10^(-2:10)) +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
                        labels = scales::comma) +
