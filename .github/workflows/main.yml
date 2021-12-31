@@ -23,15 +23,19 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Deploy Dashboard
-        uses: appleboy/ssh-action@v0.1.2
+        uses: appleboy/ssh-action@master
         with:
-          host: ${{secrets.SSH_HOST}}
-          key: ${{secrets.SSH_KEY}}
-          username: ${{secrets.SSH_USERNAME}}
-          
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}          
           script: |
-            rm -rf home/erichare/GitLab/crypto/masternode/apps/public/gitcoin-grants-lifetime-analysis
+            rm -rf /home/erichare/GitLab/crypto/masternode/apps/public/gitcoin-grants-lifetime-analysis
+            mkdir test2
+            cd test2
             git -c core.sshCommand="ssh -i /home/erichare/.ssh/id_ed25519" clone git@github.com:Omni-Analytics-Group/gitcoin-grants-lifetime-analysis.git
             cp -Rf gitcoin-grants-lifetime-analysis /home/erichare/GitLab/crypto/masternode/apps/public/
+            cd ..
+            rm -rf test2
             echo "Deployment successful"
 
