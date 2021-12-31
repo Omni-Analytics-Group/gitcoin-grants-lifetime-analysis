@@ -31,7 +31,7 @@ jobs:
           
           script: |
             rm -rf home/erichare/GitLab/crypto/masternode/apps/public/gitcoin-grants-lifetime-analysis
-            git -c core.sshCommand="ssh -i /home/erichare/.ssh/id_rsa_do" clone git@github.com:Omni-Analytics-Group/gitcoin-grants-lifetime-analysis.git
+            git -c core.sshCommand="ssh -i /home/erichare/.ssh/id_rsa" clone git@github.com:Omni-Analytics-Group/gitcoin-grants-lifetime-analysis.git
             cp -Rf gitcoin-grants-lifetime-analysis /home/erichare/GitLab/crypto/masternode/apps/public/
             echo "Deployment successful"
 
